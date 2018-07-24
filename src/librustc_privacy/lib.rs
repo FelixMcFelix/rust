@@ -23,6 +23,7 @@
 extern crate rustc_typeck;
 extern crate syntax_pos;
 extern crate rustc_data_structures;
+extern crate rustc_target;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::def::Def;
@@ -46,6 +47,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 
 mod diagnostics;
+mod reachable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Visitor used to determine if pub(restricted) is used anywhere in the crate.
@@ -1764,6 +1766,14 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             inner_visibility: ty::Visibility::Public,
         };
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
+    }
+
+    let all_reachables = reachable::reachable_set_from_levels(tcx, &visitor.access_levels);
+
+    for node_id in all_reachables.0.iter() {
+        visitor.update(*node_id, Some(AccessLevel::Reachable));
+
+        // TODO: infer stabilities/deprecation somehow
     }
 
     Lrc::new(visitor.access_levels)

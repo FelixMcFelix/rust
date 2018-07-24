@@ -2239,6 +2239,7 @@ version = "0.0.0"
 dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
+ "rustc_target 0.0.0",
  "rustc_typeck 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
