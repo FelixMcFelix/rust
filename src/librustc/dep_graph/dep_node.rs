@@ -476,6 +476,7 @@ define_dep_nodes!( <'tcx>
     [eval_always] CoherenceInherentImplOverlapCheck,
     [] CoherenceCheckTrait(DefId),
     [eval_always] PrivacyAccessLevels(CrateNum),
+    [eval_always] PrivacyAccessLevelsLints(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.

@@ -1034,7 +1034,7 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
 ///
 /// Consumes the `lint_store` field of the `Session`.
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels_lints(LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
     let passes = tcx.sess.lint_store.borrow_mut().late_passes.take();

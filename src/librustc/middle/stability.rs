@@ -335,7 +335,7 @@ impl<'a, 'tcx: 'a> MissingStabilityAnnotations<'a, 'tcx> {
         let stab = self.tcx.stability().local_stability(hir_id);
         let is_error = !self.tcx.sess.opts.test &&
                         stab.is_none() &&
-                        self.access_levels.is_reachable(id);
+                        self.access_levels.is_extern_reachable(id);
         if is_error {
             self.tcx.sess.span_err(span, "This node does not have a stability attribute");
         }

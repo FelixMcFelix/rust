@@ -15,13 +15,13 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use hir::def_id::CrateNum;
+// use hir::def_id::CrateNum;
 use rustc_data_structures::sync::Lrc;
-use ty::TyCtxt;
-use ty::query::Providers;
+// use ty::TyCtxt;
+// use ty::query::Providers;
 use util::nodemap::NodeSet;
 
-use hir::def_id::LOCAL_CRATE;
+// use hir::def_id::LOCAL_CRATE;
 
 // We introduce a new-type here, so we can have a specialized HashStable
 // implementation for it.
@@ -29,25 +29,29 @@ use hir::def_id::LOCAL_CRATE;
 pub struct ReachableSet(pub Lrc<NodeSet>);
 
 
-fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
-    debug_assert!(crate_num == LOCAL_CRATE);
-    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
+// fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
+//     debug_assert!(crate_num == LOCAL_CRATE);
+//     let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
 
-    // Reachability analysis now moved to privacy_access_levels
-    // Convert its result.
-    let mut reachable_symbols = NodeSet();
+//     // Reachability analysis now moved to privacy_access_levels:
+//     // convert its result.
+//     let mut reachable_symbols = NodeSet();
 
-    for (id, _) in &access_levels.map {
-        reachable_symbols.insert(*id);
-    }
+//     // See if going back to old-school works for now...
+//     for (id, _) in &access_levels.map {
+//         if access_levels.is_extern_reachable(*id) {
+//             reachable_symbols.insert(*id);
+//         }
+//         // reachable_symbols.insert(*id);
+//     }
 
-    // Return the set of reachable symbols.
-    ReachableSet(Lrc::new(reachable_symbols))
-}
+//     // Return the set of reachable symbols.
+//     ReachableSet(Lrc::new(reachable_symbols))
+// }
 
-pub fn provide(providers: &mut Providers) {
-    *providers = Providers {
-        reachable_set,
-        ..*providers
-    };
-}
+// pub fn provide(providers: &mut Providers) {
+//     *providers = Providers {
+//         reachable_set,
+//         ..*providers
+//     };
+// }

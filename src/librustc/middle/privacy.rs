@@ -21,6 +21,9 @@ use syntax::ast::NodeId;
 // Accessibility levels, sorted in ascending order
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AccessLevel {
+    // Reachable for the purposes of inlining elsewhere (but not trivially reachable),
+    // and shouldn't be visible to stability checks/lints etc. 
+    SecretSquirrel,
     // Exported items + items participating in various kinds of public interfaces,
     // but not directly nameable. For example, if function `fn f() -> T {...}` is
     // public, then type `T` is reachable. Its values can be obtained by other crates
@@ -41,6 +44,9 @@ pub struct AccessLevels<Id = NodeId> {
 impl<Id: Hash + Eq> AccessLevels<Id> {
     pub fn is_reachable(&self, id: Id) -> bool {
         self.map.contains_key(&id)
+    }
+    pub fn is_extern_reachable(&self, id: Id) -> bool {
+        self.map.get(&id) >= Some(&AccessLevel::Reachable)
     }
     pub fn is_exported(&self, id: Id) -> bool {
         self.map.get(&id) >= Some(&AccessLevel::Exported)

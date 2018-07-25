@@ -18,6 +18,7 @@
 
 #![recursion_limit="256"]
 
+#[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate rustc_typeck;
@@ -32,6 +33,7 @@ use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
 use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
+use rustc::middle::reachable::ReachableSet;
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, GenericParamDefKind};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::query::Providers;
@@ -1683,6 +1685,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         privacy_access_levels,
+        privacy_access_levels_lints,
+        reachable_set,
         ..*providers
     };
 }
@@ -1691,9 +1695,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Lrc<AccessLevels> {
     tcx.privacy_access_levels(LOCAL_CRATE)
 }
 
-fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn privacy_access_levels_base<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    krate: CrateNum)
-                                   -> Lrc<AccessLevels> {
+                                   -> (Lrc<AccessLevels>, ReachableSet) {
     assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -1770,13 +1774,97 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let all_reachables = reachable::reachable_set_from_levels(tcx, &visitor.access_levels);
 
-    for node_id in all_reachables.0.iter() {
-        visitor.update(*node_id, Some(AccessLevel::Reachable));
+    let mut diff_count = 0;
+    let mut before = 0;
+    let mut all = 0;
 
-        // TODO: infer stabilities/deprecation somehow
+    let mut lowest_before = 1<<31;
+    let mut lowest_new = 1<<31;
+
+    for (id, _) in &visitor.access_levels.map {
+        before += 1;
+        lowest_before = lowest_before.min(id.as_u32());
     }
 
-    Lrc::new(visitor.access_levels)
+    debug!("{:?}", &visitor.access_levels.map);
+    debug!("{:?}", all_reachables.0);
+
+    for node_id in all_reachables.0.iter() {
+        // FIXME: Some AST nodes are reluctant to be exported...
+        let _existed = visitor.access_levels.is_reachable(*node_id);
+
+        let _new = if visitor.update(*node_id, Some(AccessLevel::SecretSquirrel)) < Some(AccessLevel::Reachable) {
+            diff_count += 1;
+            true
+        } else { false };
+
+        if !(_existed || _new) {
+            // let spanny = if let Some(node) = tcx.hir.find(*node_id) {node.span} else {Default::default()};
+            let spanny = tcx.hir.find(*node_id);
+            eprintln!("mystery node: {:?}", spanny);
+        }
+
+        all += 1;
+        lowest_new = lowest_new.min(node_id.as_u32());
+        // visitor.update(*node_id, Some(AccessLevel::SecretSquirrel));
+    }
+
+    eprintln!("new reachability added in {} new elements, total was {}. Had {}, matches? {}, lowests: {} {}, 0th entry is {:?}", diff_count, all, before, before == all-diff_count, lowest_before, lowest_new, visitor.access_levels.map.get(&ast::NodeId::new(0)));
+
+    (Lrc::new(visitor.access_levels), all_reachables)
+}
+
+fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   krate: CrateNum)
+                                   -> Lrc<AccessLevels> {
+    privacy_access_levels_base(tcx, krate).0
+}
+
+// fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
+//     // Return the set of reachable symbols.
+//     privacy_access_levels_base(tcx, crate_num).1
+// }
+
+
+fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> ReachableSet {
+    debug_assert!(crate_num == LOCAL_CRATE);
+    let access_levels = &privacy_access_levels_base(tcx, crate_num).0;
+
+    // Reachability analysis now moved to privacy_access_levels:
+    // convert its result.
+    let mut reachable_symbols = NodeSet();
+
+    // See if going back to old-school works for now...
+    for (id, _) in &access_levels.map {
+        // if access_levels.is_extern_reachable(*id) {
+        if id.as_u32() != 0 {
+            reachable_symbols.insert(*id);
+        }
+        // reachable_symbols.insert(*id);
+    }
+
+    // Return the set of reachable symbols.
+    ReachableSet(Lrc::new(reachable_symbols))
+}
+
+fn privacy_access_levels_lints<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   krate: CrateNum)
+                                   -> Lrc<AccessLevels> {
+    assert_eq!(krate, LOCAL_CRATE);
+
+    let full_access = tcx.privacy_access_levels(krate);
+
+    let mut access_levels: AccessLevels = Default::default();
+
+    for (node_id, level) in &full_access.map {
+        if level < &AccessLevel::Reachable {
+            continue;
+        }
+
+        access_levels.map.insert(*node_id, *level);
+    }
+
+    Lrc::new(access_levels)
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

@@ -267,6 +267,7 @@ define_queries! { <'tcx>
 
     /// Performs the privacy check and computes "access levels".
     [] fn privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Lrc<AccessLevels>,
+    [] fn privacy_access_levels_lints: PrivacyAccessLevelsLints(CrateNum) -> Lrc<AccessLevels>,
 
     [] fn reachable_set: reachability_dep_node(CrateNum) -> ReachableSet,
 

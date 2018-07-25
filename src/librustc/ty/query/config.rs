@@ -260,6 +260,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::privacy_access_levels_lints<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("privacy access levels for lints")
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::typeck_item_bodies<'tcx> {
     fn describe(_: TyCtxt, _: CrateNum) -> String {
         format!("type-checking all item bodies")
